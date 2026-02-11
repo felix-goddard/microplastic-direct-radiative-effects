@@ -1,0 +1,31 @@
+#!/bin/sh
+
+SOCRATES_PATH=/path/to/socrates
+
+if [ ! -d "$SOCRATES_PATH" ]; then
+  echo "The variable SOCRATES_PATH on line 3 of this script must be set to the directory SOCRATES is installed in."
+  exit -1
+fi
+
+if [ $# -eq 0 ]; then
+  echo "No input file given, aborting"
+else
+  DATA_DIR=$(realpath ./data)
+  INPUT_FILE=$DATA_DIR/spectra/$1
+  OUTPUT_FILE=$DATA_DIR/optical_properties/$1
+
+  if [ ! -f $INPUT_FILE ]; then
+    echo "Given input file does not exist"
+  else
+    pushd $SOCRATES_PATH/sbin
+
+    source ../set_rad_env
+    . ./Cscatter_average -s $DATA_DIR/socrates/sp_sw -S $DATA_DIR/socrates/lean_12 -P 1 -w -a ${OUTPUT_FILE}_sw $INPUT_FILE
+    echo "Created ${OUTPUT_FILE}_sw"
+
+    . ./Cscatter_average -s $DATA_DIR/socrates/sp_lw -S $DATA_DIR/socrates/lean_12 -P 1 -w -a ${OUTPUT_FILE}_lw $INPUT_FILE
+    echo "Created ${OUTPUT_FILE}_lw"
+
+    popd
+  fi
+fi

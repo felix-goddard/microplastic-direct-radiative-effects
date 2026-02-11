@@ -1,0 +1,1 @@
+These CSV files contain the complex refractive indices for the range of plastic colours considered, measured and modelled by Stefania Glukhova and Eric C. Le Ru. Each CSV contains columns `wavelength` giving the wavelength in nanometers, `n` giving the real part of the refractive index, and `k` giving the imaginary part of the refractive index.

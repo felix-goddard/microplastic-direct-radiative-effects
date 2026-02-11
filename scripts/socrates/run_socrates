@@ -1,0 +1,137 @@
+#! /bin/bash
+{
+
+SOCRATES_PATH=/path/to/socrates
+. $SOCRATES_PATH/set_rad_env
+
+#=========================================================================
+
+mp_colour="clear"
+mp_size_dist="powerlaw(1.52,1-100)"
+mp_vertical="exponential(0.3,2km)"
+mp_horizontal="uniform(100m-3)"
+
+#=========================================================================
+
+base_dir=$(realpath $(dirname "$0")/../..)
+
+output_dir=$base_dir/data/socrates/output
+spectra_dir=$base_dir/data/socrates/optical_properties
+profiles_dir=$base_dir/data/socrates/atmospheric_profiles
+
+echo $base_dir
+exit
+
+horizontal_profile_regex='^([a-z]+)\(([0-9]+(\.[0-9]+)?)m-3\)$'
+if [[ $mp_horizontal =~ $horizontal_profile_regex ]]; then
+
+    mp_profile="$profiles_dir/mps_${mp_vertical}_${BASH_REMATCH[1]}(1m-3).nc"
+    mp_conc=${BASH_REMATCH[2]}
+
+    if ! [ -f $mp_profile ]; then
+        >&2 echo "No profile file exists for the combination `$mp_vertical` and `$mp_horizontal`!"
+        exit 1
+    fi
+
+    echo "Running case ${mp_colour} ${mp_size_dist} ${mp_vertical} ${mp_horizontal}"
+else
+    unset mp_profile
+    echo "Running with no microplastics"
+fi
+
+work_dir=$(mktemp -d work.XXXXXX)
+pushd $work_dir
+
+spectrum_filename=${mp_colour}_${mp_size_dist}
+cp $spectra_dir/${spectrum_filename}_lw "${spectrum_filename}_lw"
+cp $spectra_dir/${spectrum_filename}_sw "${spectrum_filename}_sw"
+cp $SOCRATES_PATH/data/spectra/ga7/sp_lw_ga7_k "${spectrum_filename}_lw_k"
+cp $SOCRATES_PATH/data/spectra/ga7/sp_sw_ga7_k "${spectrum_filename}_sw_k"
+
+if [[ -v mp_profile ]]; then
+    # Rather than saving out a profile for every concentration we could want to use,
+    # we have one file at 1m-3, which we then multiply by the desired concentration.
+    ncap2 -s "mp_conc*=${mp_conc}" $mp_profile mp_conc.nc
+fi
+
+# We can't just run the entire globe in one go, it's too big and SOCRATES runs out of
+# memory. Instead, we use NCO to cut out tiles from our datasets and run each tile
+# individually. The fluxes for each tile are saved separately, and at the end we
+# glue them all back together. Currently this is set up for 18 latitude and 24 longitude
+# tiles, each 8x8 points for a total of 144 latitude points and 192 longitude points.
+
+n_lat=144
+n_lon=192
+
+tile_size_lon=8
+tile_size_lat=8
+
+for ((row=1; row <= $(($n_lat/$tile_size_lat)); row++)); do
+    for ((col=1; col <= $(($n_lon/$tile_size_lon)); col++)); do
+
+        base=tile_${row}_${col}
+        lat_start=$((($row-1)*$tile_size_lat))
+        lat_end=$(($row*$tile_size_lat-1))
+        lon_start=$((($col-1)*$tile_size_lon))
+        lon_end=$(($col*$tile_size_lon-1))
+
+        echo "Running tile $row,$col [lats=($lat_start, $lat_end), lons=($lon_start, $lon_end)]"
+
+        ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end $profiles_dir/surface_temperature.nc $base.tstar
+        ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end $profiles_dir/temperature_layers.nc  $base.tl
+        ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end $profiles_dir/temperature_centers.nc $base.t
+        ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end $profiles_dir/water_vapour.nc        $base.q
+        ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end $profiles_dir/o3.nc                  $base.o3
+        ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end $profiles_dir/o2.nc                  $base.o2
+        ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end $profiles_dir/co2.nc                 $base.co2
+        ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end $profiles_dir/solar_zenith.nc        $base.szen
+        ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end $profiles_dir/solar_irradiance.nc    $base.stoa
+
+        if [[ -v mp_profile ]]; then
+            ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end mp_conc.nc $base.soot
+        fi
+
+        #=========================================================================
+
+        ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end $profiles_dir/albedo_lw.nc $base.surf
+
+        Cl_run_cdf -s "${spectrum_filename}_lw" -R 1 9 -B $base -C 5 -g 2 -c +R -I -t 12 -v 13 -a +A
+        mv $base.nflx ${base}_lw_nflux.nc
+        
+        resrm $base
+        rm $base.surf
+        
+        #=========================================================================
+        
+        ncks -d lon,$lon_start,$lon_end -d lat,$lat_start,$lat_end $profiles_dir/albedo_sw.nc $base.surf
+
+        Cl_run_cdf -s "${spectrum_filename}_sw" -R 1 6 -B $base -C 5 -g 2 -c +R -S -t 16 -v 13 -a +A
+        mv $base.nflx ${base}_sw_nflux.nc
+        
+        resrm $base
+        rm $base.*
+
+        #=========================================================================
+    done
+done
+
+cdo collgrid *lw_nflux.nc longwave.nc
+ncrename -v nflx,lw longwave.nc
+
+cdo collgrid *sw_nflux.nc shortwave.nc
+ncrename -v nflx,sw shortwave.nc
+
+ncks -A longwave.nc shortwave.nc
+
+if [[ -v mp_profile ]]; then
+    mv shortwave.nc $output_dir/${mp_colour}_${mp_size_dist}_${mp_vertical}_${mp_horizontal}.nc
+else
+    # If mp_profile is unset then we are running without microplastics; save the output to control.nc
+    mv shortwave.nc $output_dir/control.nc
+fi
+
+popd
+rm -r $work_dir
+
+exit
+}

@@ -1,0 +1,22 @@
+name: microplastic-direct-radiative-effects
+channels:
+  - conda-forge
+dependencies:
+  - cartopy=0.25.0
+  - cdsapi=0.7.7
+  - cftime=1.6.4
+  - h5netcdf 1.7.3
+  - jupyter=1.1.1
+  - matplotlib=3.10.7
+  - miepython=2.5.4
+  - netcdf4=1.7.3
+  - numpy=2.3.4
+  - pandas=2.3.3
+  - pip=25.2
+  - python=3.11.9
+  - scipy=1.16.3
+  - setuptools=80.9.0
+  - xarray=2025.10.1
+  - pip:
+    - ds-format==1.1.0
+    - scicomap==1.0.1
