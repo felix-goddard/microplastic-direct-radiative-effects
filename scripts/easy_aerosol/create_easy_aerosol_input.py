@@ -34,8 +34,11 @@ opt_prop_dir = base_path / 'data' / 'optical_properties'
 orography_file = base_path / 'data' / 'easy_aerosol' / 'orography.nc'
 orog = xr.open_dataset(orography_file).surface_altitude
 
-# This file specifies the level structure of the model
-levels_file = base_path / 'data' / 'easy_aerosol' / 'vertlevs_L85_50t_35s_85km'
+# This file specifies the level structure of the model; this file
+# does not exist in this repository, but can be created from the level
+# set L85(50t,35s)85 given in namelist format at
+#   https://gmd.copernicus.org/articles/10/1487/2017/gmd-10-1487-2017-supplement.pdf
+levels_file = base_path / 'data' / 'easy_aerosol' / 'vertical_levels_file'
 
 # These are the times we output at
 time = cftime.date2num(

@@ -55,6 +55,8 @@ Each experiment is described by a name consisting of four terms separated by und
 
 The variable `opt_prop_dir` on line 27 specifies the path to the directory containing the files of optical properties (`data/optical_properties` by default); each file encodes both a colour and size distribution, hence the allowed values of colour and size distribution are determined by the files found therein.
 
+The variable `levels_file` on line 38 specifies the path to a namelist file that defines the vertical levels of the HadGEM3-GA7.1. The level set we use is given (in namelist format) as L85(50$_{\rm t}$,35$_{\rm s}$)$_{85}$ in Section 3.2 of [the supplement to Walters et al. (2017)](https://gmd.copernicus.org/articles/10/1487/2017/gmd-10-1487-2017-supplement.pdf).
+
 Two vertical distributions are defined (lines 214--222):
 - the "exponential" distribution, which is parameterised by an exponential base and a cutoff altitude:
   `exponential(x,ykm)`, where `x` and `y` are numbers, yields the vertical distribution function $x^{z/10\text{ km}}$ for $z\leq y$ and $0$ for $z>y$.
@@ -101,3 +103,6 @@ McErlich, C., Goddard, F., Aves, A., Hardacre, C., Evangeliou, N., Hewitt, A. J.
 Revell, L. E., Kuma, P., Le Ru, E. C., Somerville, W. R. C., & Gaw, S. (2021). Direct radiative effects of airborne microplastics. Nature, 598(7881), 462–467. https://doi.org/10.1038/s41586-021-03864-x
 
 Tichý, O., Košík, V., Šmídl, V., & Evangeliou, N. (2025, March 18). Atmospheric microplastics emissions estimation and uncertainty quantification using Gibbs sampler. https://doi.org/10.5194/egusphere-egu25-11924
+
+Walters, D., Boutle, I., Brooks, M., Melvin, T., Stratton, R., Vosper, S., Wells, H., Williams, K., Wood, N., Allen, T., Bushell, A., Copsey, D., Earnshaw, P., Edwards, J., Gross, M., Hardiman, S., Harris, C., Heming, J., Klingaman, N., … Xavier, P. (2017). The Met Office Unified Model Global Atmosphere 6.0/6.1 and JULES Global Land 6.0/6.1 configurations. Geoscientific Model Development, 10(4), 1487–1520. https://doi.org/10.5194/gmd-10-1487-2017
+
